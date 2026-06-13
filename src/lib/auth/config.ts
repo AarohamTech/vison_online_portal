@@ -8,6 +8,8 @@ import type { NextAuthConfig } from "next-auth";
 import type { Role } from "@/types";
 
 export const authConfig = {
+  // Trust the deployment host (required for Auth.js on Vercel/proxies).
+  trustHost: true,
   pages: {
     signIn: "/login",
   },
