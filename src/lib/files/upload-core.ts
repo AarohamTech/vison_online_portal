@@ -59,6 +59,8 @@ export interface StoreFileInput {
   relPath: string;
   bytes: Buffer | Uint8Array;
   contentType?: string;
+  /** Client identifier for activity tracking, e.g. "MvsCloudUploader/1.0". */
+  client?: string;
 }
 
 export class UploadRejectedError extends Error {}
@@ -130,6 +132,7 @@ export async function storeUploadedFile(
     })
     .returning();
 
+  const via = input.client ?? "api";
   if (input.section === "annotated" && isLabel(fileName)) {
     await db.insert(labelUploads).values({
       projectId: input.projectId,
@@ -139,12 +142,12 @@ export async function storeUploadedFile(
     });
     await logActivity({
       userId: user.id, action: "label_uploaded", projectId: input.projectId,
-      targetType: "file", targetId: row.id, details: { fileName, via: "api" },
+      targetType: "file", targetId: row.id, details: { fileName, via },
     });
   } else {
     await logActivity({
       userId: user.id, action: "file_uploaded", projectId: input.projectId,
-      targetType: "file", targetId: row.id, details: { fileName, section: input.section, via: "api" },
+      targetType: "file", targetId: row.id, details: { fileName, section: input.section, via },
     });
   }
 

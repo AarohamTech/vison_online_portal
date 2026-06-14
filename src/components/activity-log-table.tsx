@@ -24,6 +24,7 @@ export function ActivityLogTable({
             <TableHead>User</TableHead>
             <TableHead>Action</TableHead>
             <TableHead>Target</TableHead>
+            <TableHead>Source</TableHead>
             <TableHead className="text-right">When</TableHead>
           </TableRow>
         </TableHeader>
@@ -38,6 +39,13 @@ export function ActivityLogTable({
                   : typeof a.details?.name === "string"
                     ? a.details.name
                     : a.targetType ?? "—"}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                {(() => {
+                  const via = typeof a.details?.via === "string" ? a.details.via : null;
+                  if (!via || via === "api") return via === "api" ? "API" : "Web";
+                  return via.startsWith("Mvs") ? "MVS Uploader" : via;
+                })()}
               </TableCell>
               <TableCell className="text-right text-muted-foreground">{formatRelativeTime(a.createdAt)}</TableCell>
             </TableRow>

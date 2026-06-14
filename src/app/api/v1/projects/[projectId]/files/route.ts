@@ -87,6 +87,7 @@ export async function POST(
       relPath,
       bytes,
       contentType: file.type || undefined,
+      client: req.headers.get("x-client") ?? undefined,
     });
     return json({
       file: {

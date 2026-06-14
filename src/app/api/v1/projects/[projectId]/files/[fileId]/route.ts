@@ -43,7 +43,8 @@ export async function DELETE(
 
   await logActivity({
     userId: ctx.user.id, action: "file_deleted", projectId,
-    targetType: "file", targetId: fileId, details: { fileName: file.fileName, via: "api" },
+    targetType: "file", targetId: fileId,
+    details: { fileName: file.fileName, via: req.headers.get("x-client") ?? "api" },
   });
 
   return json({ ok: true, deleted: fileId });
