@@ -6,14 +6,6 @@ import { db } from "@/lib/db";
 import { files as filesTable, labelUploads } from "@/lib/db/schema";
 import { loadAccessContext } from "@/lib/projects/access";
 import {
-  canUploadImages,
-  canUploadLabels,
-  canManageInstaller,
-} from "@/lib/permissions";
-import {
-  IMAGE_EXTENSIONS,
-  LABEL_EXTENSIONS,
-  INSTALLER_EXTENSIONS,
   getExtension,
   isBlockedForNonAdmin,
   isImage,
@@ -23,36 +15,8 @@ import { buildObjectKey, normalizeRelativePath, splitPath } from "@/lib/s3/keys"
 import { signedUploadUrl } from "@/lib/s3/client";
 import { logActivity } from "@/lib/db/queries/activity";
 import { SECTION_SLUG } from "@/lib/sections";
-import type { Membership } from "@/lib/permissions";
+import { effectiveAllowed, mimeFor } from "./upload-core";
 import type { Section } from "@/types";
-import type { SessionUser } from "@/lib/auth/session";
-
-const MIME: Record<string, string> = {
-  jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", bmp: "image/bmp",
-  tif: "image/tiff", tiff: "image/tiff", webp: "image/webp",
-  json: "application/json", xml: "application/xml", csv: "text/csv",
-  txt: "text/plain", yaml: "text/yaml", yml: "text/yaml", md: "text/markdown",
-  zip: "application/zip", "7z": "application/x-7z-compressed", rar: "application/vnd.rar",
-};
-function mimeFor(name: string, fallback?: string): string {
-  return MIME[getExtension(name)] ?? fallback ?? "application/octet-stream";
-}
-
-/** Extensions this user may upload into this section, given their membership. */
-function effectiveAllowed(
-  user: SessionUser,
-  membership: Membership,
-  section: Section
-): Set<string> {
-  const set = new Set<string>();
-  if (section === "installer") {
-    if (canManageInstaller(user)) INSTALLER_EXTENSIONS.forEach((e) => set.add(e));
-    return set;
-  }
-  if (canUploadLabels(user, membership)) LABEL_EXTENSIONS.forEach((e) => set.add(e));
-  if (canUploadImages(user, membership)) IMAGE_EXTENSIONS.forEach((e) => set.add(e));
-  return set;
-}
 
 export interface UploadItemInput {
   /** Client-side id to correlate the response. */

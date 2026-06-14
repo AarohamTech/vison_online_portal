@@ -256,6 +256,26 @@ db/                        # (Phase 2) SQL migrations + RLS
   re-upload/replace works; bulk delete button is stubbed).
 - Browser upload requires the **CORS** policy applied (see below).
 
+## Post-launch additions
+
+### Vercel build fix
+- DB client is now **lazy** (`src/lib/db/index.ts` Proxy) — importing it no
+  longer connects/throws, so `next build` page-data collection succeeds even
+  with no env vars. Verified: full build passes with `.env.local` removed.
+- Added `trustHost: true` to Auth.js config for Vercel.
+
+### REST API v1 (for the desktop/EXE uploader) — see `docs/api.md`
+- Bearer-token auth (JWT via `jose`, signed with `AUTH_SECRET`, 30-day).
+- `POST /api/v1/auth/login`, `GET /api/v1/auth/me`
+- `GET/POST /api/v1/projects`, `GET /api/v1/projects/{id}`
+- `GET /api/v1/projects/{id}/files` (list), `POST` (direct multipart upload —
+  bytes → S3 → DB, no CORS needed), `DELETE .../files/{fileId}`
+- Same permission model enforced server-side (extracted shared
+  `lib/files/upload-core.ts` `storeUploadedFile` + `effectiveAllowed`; shared
+  `lib/projects/create.ts`). Proxy lets `/api/v1` through to bearer auth.
+- **Verified live**: login→token, me, list projects, multipart upload (lands at
+  correct S3 key), list, annotator image upload → 403, delete, no-token → 401.
+
 ## Open items / needed from user
 
 - [x] Neon Postgres credentials (provided)

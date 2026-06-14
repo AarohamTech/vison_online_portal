@@ -2,16 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { eq } from "drizzle-orm";
-import { db } from "@/lib/db";
-import { projects } from "@/lib/db/schema";
 import { requireUser } from "@/lib/auth/session";
 import { canManageProjects } from "@/lib/permissions";
-import { logActivity } from "@/lib/db/queries/activity";
-import { putObject, S3_BUCKET } from "@/lib/s3/client";
-import { metadataKey, projectPrefix } from "@/lib/s3/keys";
 import { createProjectSchema } from "./schema";
-import type { ProjectMetadata, ProjectStatus } from "@/types";
+import { createProjectForUser } from "./create";
 
 export interface CreateProjectState {
   error: string | null;
@@ -42,63 +36,12 @@ export async function createProjectAction(
     };
   }
 
-  const v = parsed.data;
-  let newId: string | null = null;
-
+  let newId: string;
   try {
-    // 1) Create the project row.
-    const [row] = await db
-      .insert(projects)
-      .values({
-        name: v.name,
-        customerName: v.customerName,
-        productName: v.productName,
-        description: v.description || null,
-        status: v.status as ProjectStatus,
-        createdBy: user.id,
-      })
-      .returning();
-    newId = row.id;
-
-    // 2) Write the fixed folder structure + metadata.json to S3.
-    const now = row.createdAt.toISOString();
-    const metadata: ProjectMetadata = {
-      projectId: row.id,
-      projectName: row.name,
-      customerName: row.customerName,
-      productName: row.productName,
-      createdAt: now,
-      updatedAt: now,
-      createdBy: user.id,
-      folderStructureVersion: "1.0",
-    };
-    const base = projectPrefix(row.id);
-    await Promise.all([
-      putObject(metadataKey(row.id), JSON.stringify(metadata, null, 2), "application/json"),
-      // Zero-byte markers so the fixed prefixes exist in the bucket.
-      putObject(`${base}installer/.keep`, Buffer.from(""), "text/plain"),
-      putObject(`${base}train-data/raw/.keep`, Buffer.from(""), "text/plain"),
-      putObject(`${base}annotated/final_labels/.keep`, Buffer.from(""), "text/plain"),
-    ]);
-
-    await logActivity({
-      userId: user.id,
-      action: "project_created",
-      projectId: row.id,
-      targetType: "project",
-      targetId: row.id,
-      details: { name: row.name, bucket: S3_BUCKET },
-    });
+    const project = await createProjectForUser(user, parsed.data);
+    newId = project.id;
   } catch (e) {
     console.error("[createProject] failed", e);
-    // Best-effort rollback of the DB row if S3 failed midway.
-    if (newId) {
-      try {
-        await db.delete(projects).where(eq(projects.id, newId));
-      } catch {
-        /* leave for manual cleanup; logged above */
-      }
-    }
     return { error: "Failed to create project. Please try again." };
   }
 

@@ -37,7 +37,9 @@ export const authConfig = {
       const { pathname } = request.nextUrl;
 
       const isPublic =
-        pathname === "/login" || pathname.startsWith("/api/auth");
+        pathname === "/login" ||
+        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/api/v1"); // REST API authenticates via bearer token
 
       if (isPublic) return true;
       return isLoggedIn; // false → redirect to signIn page
